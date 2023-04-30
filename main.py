@@ -1,8 +1,20 @@
 import json
+import re
 
 END_FLAGS = ['good bye', 'close', 'exit', '.']
 OPERATIONS = ['add', 'change', 'phone', 'show all']
-    
+operation_two_parameters = ['add', 'change']
+operation_one_parameters = ['phone']
+
+def check_phone_number(phone: str):
+    phone = phone.replace(' ', '').replace('-', '')
+    check_phone = re.search(r'[+][0-9]{12}|[0-9]{10}', phone)
+    if check_phone and (len(phone) == 13 or len(phone) == 10):
+        return phone
+    else:
+        return None
+
+
 def input_error(func):
     def inner(*args):
         try:
@@ -20,9 +32,24 @@ def input_error(func):
 
 
 def command_parser(user_command: str):
-    command_elements = user_command.split()
-    if command_elements[0] in ['show'] :
-        command_elements[0] = f'{command_elements[0]} {command_elements.pop(1)}'
+    command_elements = []
+    check_command = user_command.split(' ', 1)
+    if check_command[0] in ['show'] :
+        check_command = user_command.split()
+        command_elements.append(user_command) if len(check_command) == 2 else command_elements.append('Error')
+    elif check_command[0] in operation_two_parameters:
+        command, arguments = check_command
+        name = arguments.split(' ', 1).pop(0)
+        phone = arguments.split(' ', 1).pop(1)
+        phone = check_phone_number(phone)
+        command_elements = [command, name, phone]
+    elif check_command[0] in operation_one_parameters:
+        command, argument = check_command
+        phone = check_phone_number(argument)
+        command_elements = [command, phone]
+    else:
+        command_elements = ['Error']
+    print(command_elements)
     return command_elements
 
 
@@ -38,23 +65,26 @@ def greeting_func():
 
 
 @input_error
-def add_contact(*args):
-    name, phone = args
+def add_contact(name, phone):
+    if not phone:
+        result = 'Wrong phone number. Try again!'
+        return result
     contact_book[name] = phone
     result = f'Contact: {name} have been created with phone: {phone}!'
     return result
 
 @input_error
-def change_contact(*args):
-    name, phone = args
+def change_contact(name, phone):
+    if not phone:
+        result = 'Wrong phone number. Try again!'
+        return result
     old_phone = contact_book[name] 
     contact_book[name] = phone
     result = f'Contact: {name} has been saved with phone: {phone}!'
     return result
     
 @input_error   
-def show_name_contact(*args):
-    phone = args[0]
+def show_name_contact(phone):
     for key, value in contact_book.items():
         if value == phone:
             name = key
@@ -72,27 +102,33 @@ def show_all_contact():
 
 def main_controller(user_command: str):
     command_elements = command_parser(user_command)
-    command, *args = command_elements
+    command = command_elements[0]
     if command == 'add':
-        result = add_contact(*args)
+        name, phone = command_elements[1:]
+        result = add_contact(name, phone)
         return result
     elif command == 'change':
-        result = change_contact(*args)
+        name, phone = command_elements[1:]
+        result = change_contact(name, phone)
         return result
     elif command == 'phone':
-        result = show_name_contact(*args)
+        phone = command_elements[1]
+        result = show_name_contact(phone)
         return result
     elif command == 'show all':
         result = f'Full contact list:\n{show_all_contact()}'
         return result
-        
+    else:
+        result = 'Wrong command. Try again!'
+        return result
+    
+    
 def main():
     '''---------------------------
         add [contact] [phone] - add new contact.
         change [contact] [phone]- change existing contact.
         phone [contact] - show number.
         show all - show all stored contacts and their numbers.
-
         To terminate the program, enter one of the following commands:
         good bye
         close
